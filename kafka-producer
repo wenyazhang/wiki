@@ -1,0 +1,43 @@
+
+当用producer发送一个消息时，有如下几个步骤：
+1. 创建一个ProducerRecord，必须包括目的topic和值（value），可选的是partition和key。发送后，producer首先会把key和value序列化成一个ByteArray。
+2. 接着，数据被发送到一个Partitioner，他会根据你所传入的partition或者key选择一个partition，然后把这个Recod放到一个等待发送到相同partition和topic的列表中，有一个单独的线程把这些record发给broker。
+3. 当broker收到消息后，他会返回一个响应。如果消息成功写入，broker返回一个包括topic、partition和offset的元数据；如果写入失败，则会返回一个error。Producer收到error后，根据设置判断是否需要重试。
+
+
+下面是一段发送的代码：
+package com.ainemo.kafka;
+
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+
+import java.util.Properties;
+import java.util.concurrent.Future;
+
+public class KafkaProducerTest {
+
+    private static final String topic = "kafka_learn";
+
+    public static void main(String[] args) throws Exception {
+        Properties properties = new Properties();
+        properties.put("bootstrap.servers", "127.0.0.1:9092");
+        properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+
+        KafkaProducer<String, String> producer = new KafkaProducer<String, String>(properties);
+        ProducerRecord<String, String> record = new ProducerRecord<>(topic, "test1");
+        /*异步调用
+        producer.send(record, new Callback() {
+            @Override
+            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                System.out.println(recordMetadata);
+            }
+        });*/
+        Future<RecordMetadata> future = producer.send(record);
+        System.out.println(future.get());
+    }
+
+}
+
